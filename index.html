@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PRJ59GK8');</script>
+<meta name="naver-site-verification" content="1eb2dceabf7e2908fb75bc78c9c7c3acade4bb51" />
+<title>마운자로 체내농도 계산기 | mjhalf</title>
+<meta name="description" content="내 몸속 마운자로 농도를 계산하고 체중 변화를 기록하세요.">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://mjhalf.com">
+<meta property="og:title" content="마운자로 체내농도 계산기 | mjhalf">
+<meta property="og:description" content="내 몸속 마운자로 농도를 계산하고 체중 변화를 기록하세요.">
+<meta property="og:image" content="https://mjhalf.com/icon.png"> <meta property="og:site_name" content="KISIHI 마운자로 다이어리">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png"> 
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+  /* 1. 기본 초기화 */
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+   
+  html, body { 
+    height: 100%; margin: 0; padding: 0; 
+    overflow: hidden; 
+    background-color: #f0f2f5; 
+    font-family: -apple-system, sans-serif;
+  }
+
+  /* 2. 앱 컨테이너 */
+.app-container { 
+    position: fixed; 
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; max-width: 600px; 
+    height: 100dvh; 
+    margin: 0 auto; 
+    background: white; 
+    display: flex; flex-direction: column; 
+    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    z-index: 1;
+    overflow: hidden; 
+  }
+   
+/* 광고 영역 스타일 */
+.ad-area { 
+    width: 100%; 
+    min-height: 50px; 
+    flex-shrink: 0; 
+    background: #fff; display: flex; justify-content: center; align-items: center; 
+    border-bottom: 1px solid #eee; 
+    z-index: 10;
+  }
+  .header { 
+    height: 50px; 
+    flex-shrink: 0; 
+    display: flex; justify-content: space-between; align-items: center; 
+    padding: 0 15px; background: white; border-bottom: 1px solid #f8f9fa; 
+    z-index: 20; position: relative;
+  }
+  .brand-name { font-weight: 900; color: #4f46e5; font-size: 1rem; }
+  .menu-btn { font-size: 24px; cursor: pointer; padding: 5px; }
+
+  /* 4. 페이지 공통 */
+.page { 
+    display: none; 
+    flex: 1; 
+    width: 100%; 
+    padding: 10px; 
+    flex-direction: column; 
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch; 
+    position: relative;
+    z-index: 5;
+  }
+  .page.active { display: flex; }
+
+  /* 5. 달력 페이지 */
+  #calendarPage { padding: 0; }
+   
+  #calendarContent {
+    flex: 1; 
+    display: flex; flex-direction: column;
+    height: 100%; 
+    padding: 0 5px 5px 5px; 
+  }
+
+  .day-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    padding: 5px 0;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #666;
+    flex-shrink: 0; 
+  }
+  .day-header div:first-child { color: #ff4d4d; } 
+
+  .cal-grid { 
+    display: grid; 
+    grid-template-columns: repeat(7, 1fr); 
+    grid-template-rows: repeat(6, 1fr); 
+    gap: 2px; 
+    flex: 1; 
+    height: 100%;
+    min-height: 0; 
+  }
+
+  .cell { 
+    width: 100%; height: 100%; 
+    border-radius: 6px; border: 1px solid #f1f3f5; 
+    position: relative; background: #fff; cursor: pointer; 
+  }
+
+  /* 6. 리포트/구입내역/게시판 페이지 */
+  #reportPage, #historyPage, #boardPage {
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 7. 글씨 및 디자인 요소 */
+  .num { position: absolute; top: 3px; left: 4px; font-size: 0.75rem; font-weight: bold; color: #333; }
+  .holiday-red { color: #ff4d4d !important; }
+  .status-icon { position: absolute; top: 3px; right: 3px; font-size: 0.8rem; }
+   
+  .weight-text { 
+    position: absolute; top: 50%; left: 0; width: 100%; 
+    transform: translateY(-50%); text-align: center; 
+    font-weight: 600; color: #adb5bd; font-size: 0.7rem; 
+  }
+  .conc-text { 
+    position: absolute; bottom: 3px; width: 100%; 
+    text-align: center; font-weight: 700; color: #ba2b7e; font-size: 0.75rem; 
+  }
+  .injected { background-color: #ba2b7e !important; border-color: #ba2b7e !important; color: #fff !important; }
+  .injected .num, .injected .weight-text, .injected .conc-text { color: #fff !important; }
+
+  /* 버튼 및 모달 */
+  .action-btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-weight: bold; background: #4f46e5; color: white; cursor: pointer; margin-top: 5px; font-size: 1rem; }
+  #menuOverlay { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 150; backdrop-filter: blur(2px); }
+  .side-menu { position: absolute; top: 0; right: -260px; width: 260px; height: 100%; background: white; box-shadow: -5px 0 25px rgba(0,0,0,0.15); transition: 0.3s; z-index: 160; display: flex; flex-direction: column; }
+  .side-menu.open { right: 0; }
+  .menu-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; background: #fdfdfd; }
+  .menu-content { flex: 1; overflow-y: auto; }
+  .menu-item { padding: 16px 20px; border-bottom: 1px solid #f8f9fa; font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+  .menu-item:active { background-color: #f5f5f5; }
+
+/* 모달 오버레이 */
+.modal-overlay {
+  display: none; 
+  position: fixed; 
+  top: 0; left: 0; 
+  width: 100%; height: 100%; 
+  background: rgba(0,0,0,0.4); 
+  z-index: 2000; 
+  justify-content: center; 
+  align-items: center;
+  backdrop-filter: blur(8px); 
+  -webkit-backdrop-filter: blur(8px); 
+}
+  .modal { background: white; padding: 20px; border-radius: 25px; width: 320px; text-align: center; box-sizing: border-box; max-height: 90vh; overflow-y: auto; }
+  .input-box { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #f1f3f5; box-sizing: border-box; font-size: 1rem; margin-bottom: 10px; outline: none; }
+  .btn-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+  .st-btn { border: 1px solid #f1f3f5; background: #f8f9fa; border-radius: 12px; padding: 12px 0; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
+  .st-btn.active { border-color: #4f46e5; background: #f5f5ff; color: #4f46e5; }
+  .h-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 10px; }
+  .h-table th { background: #f8f9fa; padding: 10px; border-bottom: 2px solid #eee; }
+  .h-table td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; vertical-align: middle; }
+  .icon-btn { cursor: pointer; font-size: 1rem; margin: 0 5px; }
+  .c-2-5 { background-color: #8b8b8c !important; } .c-5 { background-color: #4f3672 !important; }
+  .c-7-5 { background-color: #337e71 !important; } .c-10 { background-color: #ba2b7e !important; }
+
+/* 게시판 스타일 */
+.board-item { padding: 15px; border-bottom: 1px solid #f1f3f5; cursor: pointer; background: white; text-align: left; }
+.board-item:last-child { border-bottom: none; }
+.notice-item { background-color: #fff9db !important; border-bottom: 1px solid #faecc5; }
+.b-meta { font-size: 0.75rem; color: #999; margin-top: 5px; display: flex; justify-content: space-between; }
+.admin-badge { background: #4f46e5; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
+.comment-box { background: #f8f9fa; padding: 10px; border-radius: 10px; margin-top: 10px; text-align: left; font-size: 0.9rem; }
+.reply-item { border-bottom: 1px solid #eee; padding: 8px 0; }
+</style>
+</head>
+<body>
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PRJ59GK8"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<div class="app-container">
+  <div class="ad-area" style="min-height: 50px;">
+    <ins class="kakao_ad_area" style="display:none;"
+      data-ad-unit = "DAN-5BcGjBzHapv0P7Aj"
+      data-ad-width = "320"
+      data-ad-height = "50"></ins>
+    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+  </div>
+   
+  <div id="loginNotice" style="width:100%; text-align:center; color:#ff4d4d; font-size:0.75rem; font-weight:bold; background:white; padding-top:10px; display:none;">
+    ⚠ 로그아웃 상태에서는 저장되지 않습니다
+  </div>
+   
+<div class="header">
+  <div class="brand-name" style="line-height: 1.1;">
+    마운자로 체내농도 계산기
+    <div style="font-size: 0.65rem; color: #aaa; font-weight: normal; letter-spacing: 0.5px;">mjhalf.com</div>
+  </div>
+  <div class="menu-btn" onclick="toggleMenu()">☰</div>
+</div>
+
+  <div id="calendarPage" class="page active">
+    <div id="calendarContent">
+      <div style="display:flex; justify-content:space-between; align-items:center; height:40px; flex-shrink:0;">
+        <button onclick="moveCal(-1)" style="border:none; background:none; font-weight:bold; cursor:pointer; font-size:1.2rem; padding:0 10px;">◀</button>
+        <div id="calTitle" style="font-weight:900; font-size:1.1rem;"></div>
+        <button onclick="moveCal(1)" style="border:none; background:none; font-weight:bold; cursor:pointer; font-size:1.2rem; padding:0 10px;">▶</button>
+      </div>
+
+      <div class="day-header">
+        <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+      </div>
+       
+      <div class="cal-grid" id="calBoard"></div>
+    </div>
+  </div>
+
+<div id="reportPage" class="page">
+    <div style="display:flex; justify-content:center; gap:10px; margin-bottom:15px; flex-shrink:0;">
+      <button onclick="adjustRange(-7)" style="padding:8px 15px; border-radius:8px; border:1px solid #ddd; background:white;">-</button>
+      <span id="dayRange" style="font-weight:bold; font-size:1rem; padding-top:8px;">14일</span>
+      <button onclick="adjustRange(7)" style="padding:8px 15px; border-radius:8px; border:1px solid #ddd; background:white;">+</button>
+    </div>
+    <div style="width: 100%; height: 40vh; min-height: 300px; position: relative; margin-bottom: 20px;">
+      <canvas id="mainChart"></canvas>
+    </div>
+    <div id="reportSummary" style="background:#f8f9fa; border-radius:15px; padding:20px; font-size:0.9rem; line-height:1.8;">
+        <div style="text-align:center; color:#999;">데이터 분석 중...</div>
+    </div>
+  </div>
+   
+  <div id="pharmacyPage" class="page">
+  <h3 style="padding:15px 0 5px 0; margin:0; color:#4f46e5; text-align: center;">📍 온누리 약국 찾기</h3>
+  <div style="padding:0 0 15px 0; font-size:0.75rem; color:#999; text-align: center;">* 자세한 내용은 약국으로 연락하세요 *</div>
+   
+  <div style="display: flex; flex-wrap: nowrap; gap: 3px; padding: 0 10px 15px 10px;">
+    <button class="st-btn" style="flex:1; min-width:0; padding:8px 0; font-size:0.75rem;" onclick="renderPharmList('서울')">서울</button>
+    <button class="st-btn" style="flex:1; min-width:0; padding:8px 0; font-size:0.75rem;" onclick="renderPharmList('경기')">경기도</button>
+    <button class="st-btn" style="flex:1; min-width:0; padding:8px 0; font-size:0.75rem;" onclick="renderPharmList('강원도')">강원도</button>
+    <button class="st-btn" style="flex:1; min-width:0; padding:8px 0; font-size:0.75rem;" onclick="renderPharmList('충청도')">충청도</button>
+    <button class="st-btn" style="flex:1; min-width:0; padding:8px 0; font-size:0.75rem;" onclick="renderPharmList('경상도')">경상도</button>
+    <button class="st-btn" style="flex:1; min-width:0; padding:8px 0; font-size:0.75rem;" onclick="renderPharmList('전라도')">전라도</button>
+    <button class="st-btn" style="flex:1; min-width:0; padding:8px 0; font-size:0.75rem;" onclick="renderPharmList('제주도')">제주도</button>
+  </div>
+
+  <div id="pharmacyList" style="padding: 0 15px 20px 15px;">
+    <div style="text-align:center; color:#999; margin-top:30px;">지역을 선택하시면 약국 목록이 나타납니다.</div>
+  </div>
+</div>
+
+  <div id="historyPage" class="page">
+    <button class="action-btn" onclick="openHModal()">+ 구입 내역 추가</button>
+    <table class="h-table">
+      <thead><tr><th>날짜</th><th>용량</th><th>총액</th><th>관리</th></tr></thead>
+      <tbody id="hBody"></tbody>
+    </table>
+    <div id="hSummary" style="background:#f0f2ff; padding:12px; border-radius:15px; margin-top:10px; font-size:0.75rem; line-height:1.6;"></div>
+  </div>
+
+  <div id="boardPage" class="page">
+    <div style="display:flex; gap:5px; margin-bottom:10px; padding:0 10px;">
+        <input type="text" id="boardSearch" class="input-box" style="flex:1; margin:0;" placeholder="제목 또는 내용 검색" onkeyup="if(event.key==='Enter') loadBoard()">
+        <button onclick="loadBoard()" style="background:#eee; border:none; border-radius:8px; padding:0 12px;">🔍</button>
+        <button id="writeBtn" onclick="openWriteModal()" style="background:#4f46e5; color:white; border:none; padding:8px 15px; border-radius:8px; font-size:0.85rem; cursor:pointer; display:none;">글쓰기</button>
+    </div>
+    <div id="boardList" style="background:white; border-top:1px solid #eee; border-bottom:1px solid #eee;">
+        </div>
+    <div id="boardLoginMsg" style="text-align:center; padding:20px; color:#999; font-size:0.8rem; display:none;">
+        문의글은 로그인 후 작성 가능합니다.
+    </div>
+  </div>
+
+  <div class="ad-area" style="min-height: 100px; border-top: 1px solid #eee; border-bottom: none;">
+    <ins class="kakao_ad_area" style="display:none;"
+      data-ad-unit = "DAN-hqgvX5lW7Fk7HWyY"
+      data-ad-width = "320"
+      data-ad-height = "100"></ins>
+    <script type="text/javascript" src="//t1.daumcdn.net/kas/static/ba.min.js" async></script>
+  </div>
+
+  <div id="sideMenu" class="side-menu">
+    <div class="menu-header">
+      <span style="font-weight:bold; color:#444;">전체 메뉴</span>
+      <span onclick="toggleMenu()" style="cursor:pointer; font-size:1.5rem; color:#999;">&times;</span>
+    </div>
+    <div class="menu-content">
+      <div id="authMenu" class="menu-item" onclick="openAuthModal()">
+        <span>👤</span> <span id="authText">로그인 / 회원가입</span>
+      </div>
+      <div class="menu-item" onclick="showPage('calendar')"><span>📅</span> 달력</div>
+      <div class="menu-item" onclick="showPage('report')"><span>📈</span> 분석 리포트</div>
+      <div class="menu-item" onclick="showPage('history')"><span>🛒</span> 구입 내역</div>
+      <div id="pharmacyMenu" class="menu-item" onclick="handlePharmacyClick()"><span>📍</span> 온누리 약국 찾기</div>
+      <div class="menu-item" onclick="showPage('board')"><span>📢</span> 공지 & 문의</div>
+      <div class="menu-item" onclick="openInstallGuide()"><span>📲</span> 위젯(홈 화면) 만들기</div>
+      <div id="logoutBtn" class="menu-item" style="color:red; display:none;" onclick="handleLogout()">
+        <span>🚪</span> 로그아웃
+      </div>
+    </div>
+  </div>
+  <div id="menuOverlay" onclick="toggleMenu()"></div>
+
+<div id="loginCheckModal" class="modal-overlay">
+  <div class="modal">
+    <h3 style="margin-top:0; color:#4f46e5;">🔒 로그인 필요</h3>
+    <p style="font-size:0.9rem; color:#666; line-height:1.6; margin-bottom: 20px;">
+      온누리 상품권 10% 할인 약국 정보는<br>
+      <b>로그인 후</b> 확인하실 수 있습니다.
+    </p>
+    <button class="action-btn" onclick="goToLogin()">로그인하러 가기</button>
+    <button class="action-btn" style="background:#eee; color:#666; margin-top:10px;" onclick="closeLoginCheckModal()">닫기</button>
+  </div>
+</div>
+
+</div> 
+<div id="authModal" class="modal-overlay">
+  <div class="modal">
+    <h3 id="authTitle" style="margin-top:0;">로그인</h3>
+    <input type="email" id="emailIn" class="input-box" placeholder="이메일">
+    <input type="password" id="pwIn" class="input-box" placeholder="비밀번호">
+    <div id="signupOnly" style="display:none;">
+      <input type="password" id="pwConfirm" class="input-box" placeholder="비밀번호 확인">
+    </div>
+    <div id="loginOnly" style="text-align:left; margin-bottom:15px;">
+      <label style="font-size:0.8rem; color:#666;"><input type="checkbox" id="autoLogin" checked> 자동 로그인 유지</label>
+    </div>
+    <button class="action-btn" onclick="handleAuth()">확인</button>
+    <div id="authSwitch" style="font-size:0.75rem; color:#4f46e5; margin-top:15px; cursor:pointer;" onclick="switchAuth()">계정이 없으신가요? 회원가입</div>
+    <button class="action-btn" style="background:#eee; color:#666; margin-top:10px;" onclick="closeAuthModal()">취소</button>
+  </div>
+</div>
+
+
+<div id="calModal" class="modal-overlay">
+  <div class="modal">
+    <div id="modalDate" style="font-weight:900; margin-bottom:15px; font-size:0.9rem;"></div>
+    <input type="number" id="wInput" class="input-box" style="text-align:center;" placeholder="체중 (kg)" step="0.1">
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:5px; margin-bottom:15px;">
+      <div class="st-btn" id="st-🤢" onclick="setStat('🤢')">못먹겠음<br>🤢</div>
+      <div class="st-btn" id="st-😌" onclick="setStat('😌')">평화로움<br>😌</div>
+      <div class="st-btn" id="st-🥶" onclick="setStat('🥶')">배고픔<br>🥶</div>
+    </div>
+    <div class="btn-grid" id="doseGroup">
+      <button class="st-btn c-2-5" onclick="setDose(2.5)">2.5</button>
+      <button class="st-btn c-5" onclick="setDose(5)">5</button>
+      <button class="st-btn c-7-5" onclick="setDose(7.5)">7.5</button>
+      <button class="st-btn c-10" onclick="setDose(10)">10</button>
+    </div>
+    <button class="action-btn" onclick="saveCal()">기록 저장</button>
+    <button class="action-btn" style="background:#eee; color:#666;" onclick="closeCalModal()">취소</button>
+  </div>
+</div>
+
+<div id="hModal" class="modal-overlay">
+  <div class="modal">
+    <h3 style="margin-top:0; font-size:0.9rem;">구입 기록 🛒</h3>
+    <input type="hidden" id="editIdx" value="-1">
+    <div style="display:grid; grid-template-columns: 1.2fr 1fr 1fr; gap:5px; margin-bottom:10px;">
+      <select id="hYear" class="input-box" style="margin:0;"></select>
+      <select id="hMonth" class="input-box" style="margin:0;"></select>
+      <select id="hDay" class="input-box" style="margin:0;"></select>
+    </div>
+    <div class="btn-grid" id="hDoseGroup">
+      <button class="st-btn" onclick="selHDose('2.5', this)">2.5</button>
+      <button class="st-btn" onclick="selHDose('5', this)">5</button>
+      <button class="st-btn" onclick="selHDose('7.5', this)">7.5</button>
+      <button class="st-btn" onclick="selHDose('10', this)">10</button>
+    </div>
+    <div style="border-top:1px solid #eee; padding-top:10px; text-align:left;">
+      <span style="font-size:0.75rem; font-weight:bold; color:#4f46e5;">[원내처방]</span>
+      <div style="display:flex; align-items:center; gap:5px; margin-top:5px;">
+        <input type="number" id="inP" class="input-box" style="margin:0;" placeholder="원내 금액" oninput="checkHType('in')">
+        <label style="font-size:0.7rem; white-space:nowrap; cursor:pointer;"><input type="checkbox" id="inOn" onchange="calcHTotal()"> 온누리</label>
+      </div>
+    </div>
+    <div style="border-top:1px solid #eee; padding-top:10px; margin-top:10px; text-align:left;">
+      <span style="font-size:0.75rem; font-weight:bold; color:#4f46e5;">[원외처방]</span>
+      <div style="display:flex; gap:5px; margin-top:5px;">
+        <input type="number" id="hoP" class="input-box" placeholder="병원비" oninput="checkHType('out')">
+        <label style="font-size:0.7rem; cursor:pointer;"><input type="checkbox" id="hoOn" onchange="calcHTotal()"> 온누리</label>
+      </div>
+      <div style="display:flex; gap:5px; margin-top:5px;">
+        <input type="number" id="phP" class="input-box" placeholder="약값" oninput="checkHType('out')">
+        <label style="font-size:0.7rem; cursor:pointer;"><input type="checkbox" id="phOn" onchange="calcHTotal()"> 온누리</label>
+      </div>
+    </div>
+    <div style="margin-top:10px; font-weight:bold; color:#4f46e5;">최종 합계: <span id="hTotalDisplay">0</span>원</div>
+    <button class="action-btn" onclick="saveH()">저장</button>
+    <button class="action-btn" style="background:#eee; color:#666;" onclick="closeHModal()">취소</button>
+  </div>
+</div>
+
+<div id="installModal" class="modal-overlay">
+  <div class="modal" style="text-align: left;">
+    <h3 style="margin-top:0; text-align:center;">홈 화면에 추가하기 📲</h3>
+    <p style="font-size:0.85rem; color:#666; text-align:center;">
+      이 웹앱을 홈 화면에 추가하면<br><b>진짜 앱처럼</b> 편하게 쓸 수 있어요!
+    </p>
+    <div style="background:#f8f9fa; padding:10px; border-radius:10px; margin-bottom:10px;">
+      <strong style="color:#4f46e5;">🍎 아이폰 (Safari)</strong><br>
+      <span style="font-size:0.8rem;">1. 하단 공유 버튼 <span style="font-size:1.2rem;">⍈</span> 클릭<br>2. <b>'홈 화면에 추가'</b> 선택</span>
+    </div>
+    <div style="background:#f8f9fa; padding:10px; border-radius:10px; margin-bottom:15px;">
+      <strong style="color:#4f46e5;">🤖 갤럭시 (Chrome/Samsung)</strong><br>
+      <span style="font-size:0.8rem;">1. 우측 상단 메뉴 <span style="font-size:1.2rem;">⋮</span> 클릭<br>2. <b>'홈 화면에 추가'</b> 또는 <b>'앱 설치'</b> 선택</span>
+    </div>
+    <button class="action-btn" style="background:#eee; color:#666;" onclick="document.getElementById('installModal').style.display='none'">닫기</button>
+  </div>
+</div> 
+
+<div id="writeModal" class="modal-overlay">
+    <div class="modal" style="width:90%; height:90%; display:flex; flex-direction:column; max-width:600px;">
+        <h3 style="margin-top:0;">글쓰기 ✏️</h3>
+        <input type="text" id="postTitle" class="input-box" placeholder="제목을 입력하세요">
+        <textarea id="postContent" class="input-box" style="flex:1; resize:none; margin-bottom:10px;" placeholder="내용을 입력하세요"></textarea>
+        
+        <div id="adminOption" style="text-align:left; margin-bottom:10px; display:none;">
+            <label style="font-weight:bold; color:#ff4d4d;">
+                <input type="checkbox" id="isNotice"> ㅁ공지 (상단 고정)
+            </label>
+        </div>
+        <button class="action-btn" onclick="savePost()">등록</button>
+        <button class="action-btn" style="background:#eee; color:#666;" onclick="document.getElementById('writeModal').style.display='none'">취소</button>
+    </div>
+</div>
+
+<div id="viewModal" class="modal-overlay">
+    <div class="modal" style="width:90%; height:90%; text-align:left; display:flex; flex-direction:column; max-width:600px;">
+        <div style="text-align:right;">
+            <span onclick="document.getElementById('viewModal').style.display='none'" style="cursor:pointer; font-size:1.5rem;">&times;</span>
+        </div>
+        
+        <div style="flex:1; overflow-y:auto; margin-bottom:10px; padding-right:5px;">
+            <h3 id="viewTitle" style="margin:0 0 10px 0; color:#333;"></h3>
+            <div id="viewContent" style="min-height:50px; white-space:pre-wrap; font-size:1rem; line-height:1.5; border-bottom:1px solid #eee; padding-bottom:15px; margin-bottom:15px;"></div>
+            
+            <div style="text-align:right; margin-bottom:10px;">
+                <button id="editPostBtn" style="background:#4f46e5; color:white; border:none; padding:5px 10px; border-radius:5px; display:none; margin-right:5px;" onclick="editPost()">수정</button>
+                <button id="delPostBtn" style="background:#ff4d4d; color:white; border:none; padding:5px 10px; border-radius:5px; display:none;" onclick="deletePost()">삭제</button>
+            </div>
+
+            <div style="border-top:1px solid #eee; padding-top:10px;">
+                <strong style="font-size:0.85rem; color:#4f46e5;">댓글</strong>
+                <div id="commentList" style="margin-top:10px;"></div>
+            </div>
+        </div>
+
+        <div id="commentInputArea" style="border-top:1px solid #eee; padding-top:10px; display:none; flex-shrink:0;">
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="commentInput" class="input-box" style="margin:0; font-size:0.85rem;" placeholder="댓글 작성...">
+                <button onclick="saveComment()" style="border:none; background:#4f46e5; color:white; border-radius:8px; width:50px;">등록</button>
+            </div>
+        </div>
+        <div id="loginMsg" style="text-align:center; font-size:0.8rem; color:#999; margin-top:10px; flex-shrink:0;">
+            댓글 작성은 로그인이 필요합니다.
+        </div>
+    </div>
+</div>
+
+<script>
+  let now = new Date();
+  let injData = {}, weightData = {}, statData = {}, hData = [];
+  let currentUser = null, supabaseClient = null;
+  let selDate = "", selDose = null, selStat = null, selHDoseVal = "", myChart = null;
+  let authMode = 'login'; 
+  let globalPharmList = []; 
+  let currentPostId = null; 
+  let isEditMode = false; 
+  let currentPostTitle = "";   
+  let currentPostContent = ""; 
+  const ADMIN_EMAIL = 'mjhalf@naver.com'; 
+  let targetWeight = null; 
+  let myCachedLocation = null; 
+
+  window.onload = async () => {
+    initHDate(); 
+    drawCal();    
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => { myCachedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
+            (err) => { console.log("위치 권한 없음 또는 오류"); },
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 600000 } 
+        );
+    }
+
+    if (window.supabase) {
+      try {
+        const SUPABASE_URL = 'https://raybetjpjyomeudmmncr.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_8OEetEIuYXMH9l4xtd8vyg_Y9UgoJv3';
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+         
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
+          currentUser = session.user;
+          updateUI();
+          loadFromDB();
+        }
+      } catch (e) { console.error("Supabase 오류", e); }
+    }
+     
+    loadPharmacies(); 
+    updateUI(); 
+
+    if (window.location.hash === '#map') {
+        handlePharmacyClick();
+    }
+  };
+
+  /* --- 메뉴 및 페이지 제어 --- */
+  function toggleMenu() { 
+    const sm = document.getElementById('sideMenu');
+    const ov = document.getElementById('menuOverlay');
+    if (sm && ov) {
+      const isOpen = sm.classList.toggle('open');
+      ov.style.display = isOpen ? 'block' : 'none';
+    }
+  }
+
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById(id + 'Page');
+    if(target) target.classList.add('active');
+     
+    if (id === 'report') setTimeout(updateChart, 100);
+    if (id === 'history') renderH();
+    if (id === 'board') loadBoard(); 
+     
+    const sm = document.getElementById('sideMenu');
+    if (sm.classList.contains('open')) toggleMenu();
+  }
+
+  /* --- 온누리 약국 로직 --- */
+  async function loadPharmacies() {
+    try {
+      const response = await fetch('pharmacy_list.csv?v=' + new Date().getTime()); 
+      const data = await response.text();
+      const rows = data.split('\n');
+      const headers = rows[0].split(','); 
+      globalPharmList = rows.slice(1).map(row => {
+        const values = row.split(',');
+        let obj = {};
+        headers.forEach((header, i) => {
+          if(header) obj[header.trim()] = values[i] ? values[i].trim() : "";
+        });
+        return obj;
+      }).filter(p => p.name); 
+    } catch (err) { console.error("CSV 로드 실패", err); }
+  }
+
+  function handlePharmacyClick() {
+    if (currentUser) {
+      showPage('pharmacy');
+    } else {
+      const sm = document.getElementById('sideMenu');
+      if(sm.classList.contains('open')) toggleMenu();
+      document.getElementById('loginCheckModal').style.display = 'flex';
+    }
+  }
+
+  function renderPharmList(region) {
+    const listArea = document.getElementById('pharmacyList');
+    
+    const regionMap = {
+        '서울': ['서울'],
+        '경기': ['경기', '인천'],
+        '강원도': ['강원'],
+        '충청도': ['충청', '충북', '충남', '대전', '세종'],
+        '경상도': ['경상', '경북', '경남', '대구', '부산', '울산'],
+        '전라도': ['전라', '전북', '전남', '광주'],
+        '제주도': ['제주']
+    };
+
+    let targetKeywords = regionMap[region] || [region];
+    let data = globalPharmList.filter(p => {
+        return targetKeywords.some(keyword => p.area.includes(keyword));
+    });
+
+    if (data.length === 0) { 
+        listArea.innerHTML = `<div style="text-align:center; color:#999; padding:30px;">${region} 정보가 없습니다.</div>`; 
+        return; 
+    }
+
+    if (myCachedLocation) {
+        processDistanceAndDraw(data, listArea, myCachedLocation.lat, myCachedLocation.lng);
+    } 
+    else {
+        listArea.innerHTML = `<div style="text-align:center; padding:30px;">📡 내 위치 확인 중...<br><span style="font-size:0.8rem; color:#999;">(최초 1회만 시간이 걸립니다)</span></div>`;
+        
+        if (!navigator.geolocation) { 
+            drawList(data, listArea, false); 
+            return; 
+        }
+
+        navigator.geolocation.getCurrentPosition((pos) => {
+            myCachedLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            processDistanceAndDraw(data, listArea, myCachedLocation.lat, myCachedLocation.lng);
+        }, () => {
+            drawList(data, listArea, false); 
+        }, { timeout: 5000 });
+    }
+  }
+
+  function processDistanceAndDraw(data, container, lat, lng) {
+      data.forEach(p => { 
+          p.distance = getDistanceFromLatLonInKm(lat, lng, parseFloat(p.lat), parseFloat(p.lng)); 
+      });
+      data.sort((a, b) => a.distance - b.distance);
+      drawList(data, container, true);
+  }
+
+  function formatPrice(price) {
+      if(!price) return "0";
+      const num = Number(price);
+      return isNaN(num) ? price : num.toLocaleString();
+  }
+
+  function drawList(data, container, showDistance) {
+    let html = '';
+    data.forEach(p => {
+      const distBadge = showDistance && p.distance ? `<span style="color:#ba2b7e; font-weight:bold; font-size:0.85rem; margin-left:5px;">(${p.distance.toFixed(1)}km)</span>` : '';
+      html += `
+        <div style="background:white; border:1px solid #eee; border-radius:15px; padding:15px; margin-bottom:12px; box-shadow:0 2px 8px rgba(0,0,0,0.03);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <strong style="font-size:1.05rem; color:#333;">${p.name}</strong> 
+              ${distBadge}<br>
+              <span style="font-size:0.85rem; color:#666;">${p.add}</span><br>
+              <span style="font-size:0.85rem; color:#666;">📞 ${p.call}</span>
+            </div>
+            <button onclick="window.open('${p.link}')" style="background:#fee500; border:none; padding:5px 10px; border-radius:8px; font-weight:bold; cursor:pointer;">카카오맵</button>
+          </div>
+          <div style="margin-top:10px; display:flex; gap:10px;">
+            <div style="flex:1; background:#f8f9fa; padding:8px; border-radius:8px; text-align:center;">
+              <div style="font-size:0.7rem; color:#999;">2.5mg</div>
+              <div style="font-size:0.9rem; font-weight:bold; color:#ba2b7e;">${formatPrice(p['25 price'])}</div>
+            </div>
+            <div style="flex:1; background:#f8f9fa; padding:8px; border-radius:8px; text-align:center;">
+              <div style="font-size:0.7rem; color:#999;">5.0mg</div>
+              <div style="font-size:0.9rem; font-weight:bold; color:#ba2b7e;">${formatPrice(p['5mg price'])}</div>
+            </div>
+          </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+  }
+
+  function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    if(!lat1 || !lon1 || !lat2 || !lon2) return 0;
+    var R = 6371; 
+    var dLat = deg2rad(lat2 - lat1);
+    var dLon = deg2rad(lon2 - lon1);
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  }
+  function deg2rad(deg) { return deg * (Math.PI/180); }
+
+  /* --- 인증/로그인 관련 --- */
+  function closeLoginCheckModal() { document.getElementById('loginCheckModal').style.display = 'none'; }
+  function goToLogin() { closeLoginCheckModal(); openAuthModal(); }
+  function openAuthModal() { 
+    authMode = 'login';
+    document.getElementById('authTitle').innerText = '로그인';
+    document.getElementById('signupOnly').style.display = 'none';
+    document.getElementById('loginOnly').style.display = 'block';
+    document.getElementById('authModal').style.display = 'flex'; 
+    const sm = document.getElementById('sideMenu');
+    if(sm.classList.contains('open')) toggleMenu(); 
+  }
+  function switchAuth() {
+    authMode = (authMode === 'login' ? 'signup' : 'login');
+    document.getElementById('authTitle').innerText = (authMode === 'signup' ? '회원가입' : '로그인');
+    document.getElementById('signupOnly').style.display = (authMode === 'signup' ? 'block' : 'none');
+    document.getElementById('loginOnly').style.display = (authMode === 'signup' ? 'none' : 'block');
+  }
+  function closeAuthModal() { document.getElementById('authModal').style.display = 'none'; }
+  async function handleAuth() {
+    if (!supabaseClient) return alert("서버 연결 실패");
+    const email = document.getElementById('emailIn').value;
+    const password = document.getElementById('pwIn').value;
+    if (authMode === 'signup') {
+      const pwConfirm = document.getElementById('pwConfirm').value;
+      if (password !== pwConfirm) return alert("비밀번호 불일치");
+      const { error } = await supabaseClient.auth.signUp({ email, password });
+      if (error) alert(error.message); else { alert("가입 완료! 로그인해주세요."); switchAuth(); }
+    } else {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) alert(error.message); else { currentUser = data.user; closeAuthModal(); updateUI(); loadFromDB(); }
+    }
+  }
+  async function handleLogout() {
+    if(confirm("정말 로그아웃 하시겠습니까?")) {
+      if(supabaseClient) await supabaseClient.auth.signOut();
+      currentUser = null; updateUI(); drawCal(); showPage('calendar'); alert("로그아웃 되었습니다.");
+    }
+  }
+
+  function updateUI() {
+    const authText = document.getElementById('authText'), authMenu = document.getElementById('authMenu');
+    const logoutBtn = document.getElementById('logoutBtn'), notice = document.getElementById('loginNotice');
+    
+    const writeBtn = document.getElementById('writeBtn');
+    const commentInput = document.getElementById('commentInputArea');
+    const loginMsg = document.getElementById('loginMsg');
+    const boardLoginMsg = document.getElementById('boardLoginMsg');
+    
+    if (currentUser) {
+      authText.innerText = `${currentUser.email.split('@')[0]}님`;
+      authMenu.onclick = null; logoutBtn.style.display = 'flex'; if(notice) notice.style.display = 'none';
+      if(writeBtn) writeBtn.style.display = 'block';
+      if(commentInput) commentInput.style.display = 'block';
+      if(loginMsg) loginMsg.style.display = 'none';
+      if(boardLoginMsg) boardLoginMsg.style.display = 'none'; 
+    } else {
+      authText.innerText = `로그인 / 회원가입`;
+      authMenu.onclick = openAuthModal; logoutBtn.style.display = 'none'; if(notice) notice.style.display = 'block';
+      if(writeBtn) writeBtn.style.display = 'none';
+      if(commentInput) commentInput.style.display = 'none';
+      if(loginMsg) loginMsg.style.display = 'block';
+      if(boardLoginMsg) boardLoginMsg.style.display = 'block'; 
+    }
+  }
+
+  /* --- 게시판 로직 --- */
+  
+  async function loadBoard() {
+      const searchKey = document.getElementById('boardSearch').value.trim();
+      let query = supabaseClient
+        .from('board')
+        .select('*')
+        .is('parent_id', null) 
+        .order('is_notice', { ascending: false }) 
+        .order('created_at', { ascending: false });
+
+      if (searchKey) {
+          query = query.or(`title.ilike.%${searchKey}%,content.ilike.%${searchKey}%`);
+      }
+
+      const { data, error } = await query;
+      const list = document.getElementById('boardList');
+      list.innerHTML = '';
+      if(error || !data) return;
+
+      data.forEach(post => {
+          const isNotice = post.is_notice;
+          const isAdmin = post.email === ADMIN_EMAIL;
+          const date = new Date(post.created_at).toLocaleDateString();
+          let writer = post.email.split('@')[0];
+          if (isAdmin) writer = `<span class="admin-badge">👑관리자</span> mjhalf(운영자)`;
+          
+          const title = post.title || '(제목 없음)';
+
+          list.innerHTML += `
+            <div class="board-item ${isNotice ? 'notice-item' : ''}" onclick="viewPost(${post.id})">
+                <div style="font-weight:bold; color:#333; font-size:1rem; margin-bottom:5px;">
+                    ${isNotice ? '<span style="color:#ba2b7e;">[공지]</span> ' : ''}${title}
+                </div>
+                <div class="b-meta">
+                    <span>${writer}</span>
+                    <span>${date}</span>
+                </div>
+            </div>`;
+      });
+  }
+
+  function openWriteModal(isEdit = false) {
+      if(!currentUser) return alert('로그인이 필요합니다.');
+      
+      const adminOpt = document.getElementById('adminOption');
+      if(currentUser.email === ADMIN_EMAIL) adminOpt.style.display = 'block';
+      else adminOpt.style.display = 'none';
+
+      if (!isEdit) {
+          isEditMode = false;
+          currentPostId = null;
+          document.getElementById('postTitle').value = '';
+          document.getElementById('postContent').value = '';
+          document.getElementById('isNotice').checked = false;
+      } else {
+          isEditMode = true;
+          document.getElementById('postTitle').value = currentPostTitle;
+          document.getElementById('postContent').value = currentPostContent;
+      }
+      
+      document.getElementById('writeModal').style.display = 'flex';
+  }
+
+  function editPost() {
+      document.getElementById('viewModal').style.display = 'none';
+      openWriteModal(true);
+  }
+
+  async function savePost() {
+      const title = document.getElementById('postTitle').value;
+      const content = document.getElementById('postContent').value;
+      if(!title.trim()) return alert('제목을 입력하세요.');
+      if(!content.trim()) return alert('내용을 입력하세요.');
+      const isNotice = document.getElementById('isNotice').checked;
+
+      let error;
+      if (isEditMode) {
+          const result = await supabaseClient.from('board').update({
+              title: title,
+              content: content
+          }).eq('id', currentPostId);
+          error = result.error;
+      } else {
+          const result = await supabaseClient.from('board').insert({
+              user_id: currentUser.id,
+              email: currentUser.email,
+              title: title,
+              content: content,
+              is_notice: (currentUser.email === ADMIN_EMAIL && isNotice) 
+          });
+          error = result.error;
+      }
+
+      if(error) alert('저장 실패: ' + error.message);
+      else {
+          document.getElementById('writeModal').style.display = 'none';
+          loadBoard();
+      }
+  }
+
+  async function viewPost(id) {
+      currentPostId = id;
+      const { data, error } = await supabaseClient.from('board').select('*').eq('id', id).single();
+      if(error) return alert('글을 불러오지 못했습니다.');
+
+      currentPostTitle = data.title || '';
+      currentPostContent = data.content || '';
+
+      document.getElementById('viewTitle').innerText = data.title || '(제목 없음)';
+      document.getElementById('viewContent').innerText = data.content;
+      
+      const editBtn = document.getElementById('editPostBtn');
+      const delBtn = document.getElementById('delPostBtn');
+      
+      if(currentUser && (currentUser.id === data.user_id || currentUser.email === ADMIN_EMAIL)) {
+          editBtn.style.display = 'inline-block';
+          delBtn.style.display = 'inline-block';
+      } else {
+          editBtn.style.display = 'none';
+          delBtn.style.display = 'none';
+      }
+
+      document.getElementById('viewModal').style.display = 'flex';
+      loadComments(id);
+  }
+
+  async function deletePost() {
+      if(!confirm('정말 삭제하시겠습니까?')) return;
+      const { error } = await supabaseClient.from('board').delete().eq('id', currentPostId);
+      if(error) alert('삭제 실패');
+      else {
+          document.getElementById('viewModal').style.display = 'none';
+          loadBoard();
+      }
+  }
+
+  async function loadComments(postId) {
+      const list = document.getElementById('commentList');
+      list.innerHTML = '';
+      const { data } = await supabaseClient
+        .from('board')
+        .select('*')
+        .eq('parent_id', postId)
+        .order('created_at', { ascending: true });
+
+      if(data) {
+          data.forEach(c => {
+              const isAdmin = c.email === ADMIN_EMAIL;
+              let writer = c.email.split('@')[0];
+              if (isAdmin) writer = `<span class="admin-badge">👑관리자</span> 🦊`; 
+
+              let delBtn = '';
+              if(currentUser && (currentUser.id === c.user_id || currentUser.email === ADMIN_EMAIL)) {
+                  delBtn = `<span style="color:red; cursor:pointer; font-size:0.7rem; margin-left:5px;" onclick="deleteComment(${c.id})">x</span>`;
+              }
+
+              list.innerHTML += `
+                <div class="reply-item">
+                    <div style="font-size:0.8rem; font-weight:bold; color:#555;">${writer} ${delBtn}</div>
+                    <div style="font-size:0.9rem;">${c.content}</div>
+                </div>`;
+          });
+      }
+  }
+
+  async function saveComment() {
+      const input = document.getElementById('commentInput');
+      if(!input.value.trim()) return;
+      
+      const { error } = await supabaseClient.from('board').insert({
+          user_id: currentUser.id,
+          email: currentUser.email,
+          content: input.value,
+          parent_id: currentPostId 
+      });
+
+      if(error) alert('댓글 실패');
+      else {
+          input.value = '';
+          loadComments(currentPostId);
+      }
+  }
+
+  async function deleteComment(id) {
+      if(!confirm('댓글 삭제?')) return;
+      await supabaseClient.from('board').delete().eq('id', id);
+      loadComments(currentPostId);
+  }
+
+  /* --- 달력/기록 로직 --- */
+  function drawCal() {
+    let y = now.getFullYear(), m = now.getMonth();
+    const title = document.getElementById('calTitle'), board = document.getElementById('calBoard');
+    if (!title || !board) return;
+    title.innerText = `${y}년 ${m + 1}월`;
+    board.innerHTML = "";
+    let first = new Date(y, m, 1).getDay(), last = new Date(y, m + 1, 0).getDate();
+    for(let e=0; e<first; e++) board.innerHTML += '<div></div>';
+    for(let d=1; d<=last; d++) {
+      let dStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      let conc = 0; 
+      for(let s in injData) { 
+        let diff = Math.round((new Date(y,m,d) - new Date(s)) / 86400000); 
+        if(diff >= 0) conc += injData[s] * Math.pow(0.5, diff/5); 
+      }
+      let cls = `cell ${injData[dStr] ? 'injected c-'+injData[dStr].toString().replace('.','-') : ''}`;
+      board.innerHTML += `<div class="${cls}" onclick="openCalModal('${dStr}')">
+          <span class="num ${new Date(y,m,d).getDay()===0?'holiday-red':''}">${d}</span>
+          <span class="status-icon">${statData[dStr]||''}</span>
+          <span class="weight-text">${weightData[dStr] ? weightData[dStr]+'kg' : ''}</span>
+          <span class="conc-text">${conc > 0.1 ? conc.toFixed(1)+'mg' : ''}</span>
+        </div>`;
+    }
+  }
+  function moveCal(x) { now.setMonth(now.getMonth() + x); drawCal(); }
+  function openCalModal(d) { selDate = d; document.getElementById('modalDate').innerText = d; document.getElementById('wInput').value = weightData[d] || ""; selDose = injData[d]; selStat = statData[d]; refreshCalUI(); document.getElementById('calModal').style.display = 'flex'; }
+  function closeCalModal() { document.getElementById('calModal').style.display = 'none'; }
+  function refreshCalUI() { document.querySelectorAll('#doseGroup .st-btn').forEach(b => b.style.opacity = b.innerText == selDose ? '1' : '0.3'); document.querySelectorAll('#calModal .st-btn').forEach(b => b.classList.toggle('active', b.innerText.includes(selStat))); }
+  function setDose(mg) { selDose = (selDose === mg) ? null : mg; refreshCalUI(); }
+  function setStat(s) { selStat = (selStat === s) ? null : s; refreshCalUI(); }
+  async function saveCal() { let w = parseFloat(document.getElementById('wInput').value); if(w) weightData[selDate] = w; else delete weightData[selDate]; if(selDose) injData[selDate] = selDose; else delete injData[selDate]; if(selStat) statData[selDate] = selStat; else delete statData[selDate]; drawCal(); closeCalModal(); if(currentUser) await saveToDB(); }
+
+  /* --- 구입 내역 / 리포트 / DB (기본 유지) --- */
+  function initHDate() { /* 년월일 셀렉트 박스 생성 */ const y=document.getElementById('hYear'), m=document.getElementById('hMonth'), d=document.getElementById('hDay'); if(!y) return; for(let i=2025;i<=2050;i++) y.innerHTML+=`<option value="${i}">${i}년</option>`; for(let i=1;i<=12;i++) m.innerHTML+=`<option value="${i}">${i}월</option>`; for(let i=1;i<=31;i++) d.innerHTML+=`<option value="${i}">${i}일</option>`; y.value=now.getFullYear(); m.value=now.getMonth()+1; d.value=now.getDate(); }
+  function openHModal(i=-1) { document.getElementById('hModal').style.display='flex'; document.getElementById('editIdx').value=i; }
+  function closeHModal() { document.getElementById('hModal').style.display='none'; }
+  function selHDose(v, b) { selHDoseVal = v; document.querySelectorAll('#hDoseGroup .st-btn').forEach(btn => btn.classList.remove('active')); b.classList.add('active'); }
+  function checkHType(t) { if(t==='in'){ document.getElementById('hoP').value=''; document.getElementById('phP').value=''; } else { document.getElementById('inP').value=''; } calcHTotal(); }
+  function calcHTotal() { let t=0, iP=Number(document.getElementById('inP').value), hP=Number(document.getElementById('hoP').value), pP=Number(document.getElementById('phP').value); if(iP>0) t=document.getElementById('inOn').checked?iP*0.9:iP; else t=(document.getElementById('hoOn').checked?hP*0.9:hP)+(document.getElementById('phOn').checked?pP*0.9:pP); document.getElementById('hTotalDisplay').innerText=Math.floor(t).toLocaleString(); return Math.floor(t); }
+  async function saveH() { let date = `${document.getElementById('hYear').value}-${String(document.getElementById('hMonth').value).padStart(2,'0')}-${String(document.getElementById('hDay').value).padStart(2,'0')}`; let total = calcHTotal(); if(!selHDoseVal || total <= 0) return alert("입력 정보를 확인하세요."); hData.push({date, dose: selHDoseVal, total}); hData.sort((a,b)=>new Date(a.date)-new Date(b.date)); renderH(); if(currentUser) await saveToDB(); closeHModal(); }
+  
+ /* [수정] 구입 내역 렌더링 (총 지출만 표시) */
+  function renderH() { 
+    let b = document.getElementById('hBody'); 
+    if(!b) return; 
+    b.innerHTML=""; 
+    
+    let totalSum = 0;
+
+    // 리스트 그리기 및 총합 계산
+    hData.forEach((item, i) => { 
+        b.innerHTML+=`<tr><td>${item.date}</td><td>${item.dose}mg</td><td>${item.total.toLocaleString()}원</td><td><span onclick="delH(${i})">❌</span></td></tr>`; 
+        totalSum += Number(item.total);
+    }); 
+
+    // 하단 요약 표시 (총 지출만)
+    let s = document.getElementById('hSummary');
+    if(s) {
+        if(hData.length === 0) {
+            s.innerHTML = "아직 기록된 구입 내역이 없습니다.";
+        } else {
+            s.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:bold; color:#333;">💰 총 지출:</span>
+                    <span style="font-weight:bold; font-size:1.1rem; color:#4f46e5;">${totalSum.toLocaleString()}원</span>
+                </div>`;
+        }
+    }
+  }
+  async function saveToDB() { 
+    if(!currentUser) return; 
+    await supabaseClient.from('user_data').upsert({ 
+        user_id: currentUser.id, 
+        inj: injData, 
+        weight: weightData, 
+        stat: statData, 
+        history: hData,
+        target_weight: targetWeight 
+    }); 
+  }
+
+  async function loadFromDB() { 
+    const { data } = await supabaseClient.from('user_data').select('*').eq('user_id', currentUser.id).maybeSingle(); 
+    if(data) { 
+        injData = data.inj || {}; 
+        weightData = data.weight || {}; 
+        statData = data.stat || {}; 
+        hData = data.history || []; 
+        targetWeight = data.target_weight || null; 
+        drawCal(); 
+        if(document.getElementById('reportPage').classList.contains('active')) {
+            updateChart();
+        }
+    } 
+  }
+
+  async function saveGoal(val) {
+    targetWeight = parseFloat(val);
+    updateChart(); 
+    if(currentUser) await saveToDB();
+  }
+
+  function adjustRange(v) { let r=document.getElementById('dayRange'); let val=parseInt(r.innerText)+v; if(val<7) val=7; r.innerText=val+"일"; updateChart(); }
+
+/* [수정] 차트 업데이트 (체중 그래프 점 제거: pointRadius: 0 추가됨) */
+  function updateChart() {
+    const ctx = document.getElementById('mainChart').getContext('2d');
+    const range = parseInt(document.getElementById('dayRange').innerText);
+    
+    // 1. 차트 데이터 계산
+    let labels = []; let wData = []; let cData = [];
+    let start = new Date(); start.setDate(start.getDate() - (range - 1));
+    
+    for (let i = 0; i < range; i++) {
+        let d = new Date(start); d.setDate(d.getDate() + i);
+        let dStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        labels.push(`${d.getMonth()+1}/${d.getDate()}`);
+        wData.push(weightData[dStr] || null);
+        
+        let conc = 0;
+        for(let s in injData) {
+            let injDate = new Date(s);
+            let diff = (d - injDate) / (1000 * 60 * 60 * 24);
+            if (diff >= 0) conc += injData[s] * Math.pow(0.5, diff/5);
+        }
+        cData.push(conc.toFixed(2));
+    }
+
+    // 2. Y축 설정
+    const validWeights = wData.filter(w => w !== null);
+    const minWeight = validWeights.length > 0 ? Math.min(...validWeights) : 0;
+    const yMin = minWeight > 2 ? Math.floor(minWeight - 2) : 0;
+
+    if (myChart) myChart.destroy();
+
+    // 3. 차트 그리기
+    myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { 
+                    label: '체중 (kg)', 
+                    data: wData, 
+                    borderColor: '#4f46e5', 
+                    backgroundColor: '#4f46e5', 
+                    yAxisID: 'y', 
+                    spanGaps: true, 
+                    tension: 0.1, 
+                    fill: false,
+                    pointRadius: 0, // [수정] 점 크기를 0으로 설정하여 숨김
+                    pointHoverRadius: 0 // 호버 시에도 점 안 커지게 설정
+                },
+                { 
+                    label: '체내 농도 (mg)', 
+                    data: cData, 
+                    borderColor: '#ba2b7e', 
+                    backgroundColor: '#ba2b7e', 
+                    yAxisID: 'y1', 
+                    fill: false, 
+                    tension: 0.4, 
+                    pointRadius: 0, // 기존 설정 유지
+                    pointHoverRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true, 
+            maintainAspectRatio: false, 
+            events: [], // 마우스 반응 끄기
+            scales: {
+                y: { type: 'linear', display: true, position: 'left', min: yMin, title: { display: true, text: '체중', color: '#4f46e5', font: { weight: 'bold' } }, ticks: { color: '#4f46e5', stepSize: 1, callback: function(value) { return Math.floor(value); } } },
+                y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: '농도', color: '#ba2b7e', font: { weight: 'bold' } }, ticks: { color: '#ba2b7e', stepSize: 5 }, min: 0, max: 30 }
+            },
+            plugins: { 
+                tooltip: { enabled: false }, 
+                legend: { display: true } 
+            }
+        }
+    });
+
+    // ----------------------------------------------------
+    // [유지] 하단 통계 로직 (기존과 동일)
+    // ----------------------------------------------------
+    const summaryDiv = document.getElementById('reportSummary');
+    const allDates = Object.keys(weightData).sort();
+
+    if (allDates.length > 0) {
+        // --- 1. 기본 통계 ---
+        const startDateStr = allDates[0];
+        const startWeight = weightData[startDateStr];
+        const lastDateStr = allDates[allDates.length - 1];
+        const currentWeight = weightData[lastDateStr];
+
+        const sDate = new Date(startDateStr);
+        const today = new Date();
+        sDate.setHours(0,0,0,0); today.setHours(0,0,0,0);
+        
+        let daysPassed = Math.ceil((today - sDate) / (1000 * 60 * 60 * 24)) + 1;
+        if(daysPassed < 1) daysPassed = 1;
+
+        const totalLoss = startWeight - currentWeight;
+        const dailyLoss = totalLoss / daysPassed;
+
+        // --- 2. 비용 계산 (FIFO) ---
+        let totalCostUsed = 0; 
+        let costPerDay = 0; 
+        
+        let inventory = {};
+        let lastPrices = {};
+        let sortedHistory = [...hData].sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        sortedHistory.forEach(record => {
+            let doseKey = record.dose.toString();
+            let pricePerPen = Number(record.total) / 4; 
+            if (!inventory[doseKey]) inventory[doseKey] = [];
+            for(let k=0; k<4; k++) inventory[doseKey].push(pricePerPen);
+            lastPrices[doseKey] = pricePerPen;
+        });
+
+        let todayCheck = new Date();
+        todayCheck.setHours(23, 59, 59, 999);
+        let sortedInjDates = Object.keys(injData).sort().filter(dStr => new Date(dStr) <= todayCheck);
+
+        sortedInjDates.forEach(date => {
+            let usedDose = injData[date].toString();
+            if (inventory[usedDose] && inventory[usedDose].length > 0) {
+                totalCostUsed += inventory[usedDose].shift();
+            } else if (lastPrices[usedDose]) {
+                totalCostUsed += lastPrices[usedDose];
+            }
+        });
+
+        let calcEndDate = new Date(); 
+        if (sortedInjDates.length > 0) {
+            let lastInjDateStr = sortedInjDates[sortedInjDates.length - 1];
+            let dietEndDate = new Date(lastInjDateStr);
+            dietEndDate.setDate(dietEndDate.getDate() + 14);
+            if (today > dietEndDate) calcEndDate = dietEndDate;
+        }
+        calcEndDate.setHours(0,0,0,0);
+        let costDays = Math.ceil((calcEndDate - sDate) / (1000 * 60 * 60 * 24)) + 1;
+        if(costDays < 1) costDays = 1;
+        costPerDay = totalCostUsed / costDays;
+
+        // --- 3. 목표 및 예측 ---
+        let predictionHtml = `<span style="color:#999; font-size:0.8rem;">목표를 설정해주세요.</span>`;
+        let projectedCostHtml = `<span style="color:#999; font-size:0.8rem;">-</span>`;
+
+        if (targetWeight) {
+            const remainingLoss = currentWeight - targetWeight;
+            if (remainingLoss <= 0) {
+                predictionHtml = `<span style="color:#4f46e5; font-weight:bold;">🎉 이미 달성했습니다!</span>`;
+                projectedCostHtml = `<span style="color:#4f46e5; font-weight:bold;">0원</span>`;
+            } else if (dailyLoss <= 0) {
+                predictionHtml = `<span style="color:#ff4d4d; font-weight:bold;">체중이 늘고 있어요 🥲</span>`;
+                projectedCostHtml = `<span style="color:#999;">계산 불가</span>`;
+            } else {
+                const daysNeeded = Math.ceil(remainingLoss / dailyLoss);
+                const targetDate = new Date();
+                targetDate.setDate(targetDate.getDate() + daysNeeded);
+                const dateString = `${targetDate.getFullYear()}년 ${targetDate.getMonth() + 1}월 ${targetDate.getDate()}일`;
+                predictionHtml = `<span style="color:#ba2b7e; font-weight:bold;">${dateString} (약 ${daysNeeded}일 후)</span>`;
+
+                if (totalLoss > 0) {
+                    const costPerKg = totalCostUsed / totalLoss; 
+                    const futureCost = costPerKg * remainingLoss;
+                    projectedCostHtml = `<span style="color:#ba2b7e; font-weight:bold;">약 ${Math.round(futureCost).toLocaleString()}원</span>`;
+                } else {
+                    projectedCostHtml = `<span style="color:#999;">감량 데이터 부족</span>`;
+                }
+            }
+        }
+
+        // --- 4. 용량별 감량 효율 분석 ---
+        let bucketData = {}; 
+        let maxConcFound = 0;
+
+        for (let i = 0; i < allDates.length - 1; i++) {
+            const d1Str = allDates[i];
+            const d2Str = allDates[i+1];
+            const d1 = new Date(d1Str);
+            const d2 = new Date(d2Str);
+            
+            if ((d2 - d1) / (1000 * 60 * 60 * 24) === 1) {
+                const dailyWeightChange = weightData[d1Str] - weightData[d2Str]; 
+                
+                let currentConc = 0;
+                for(let s in injData) {
+                    let injDate = new Date(s);
+                    let diff = (d1 - injDate) / (1000 * 60 * 60 * 24);
+                    if(diff >= 0) currentConc += injData[s] * Math.pow(0.5, diff/5);
+                }
+                
+                if(currentConc > maxConcFound) maxConcFound = currentConc;
+
+                let bucket = Math.floor(currentConc); 
+                if (!bucketData[bucket]) bucketData[bucket] = { sum: 0, count: 0 };
+                bucketData[bucket].sum += dailyWeightChange;
+                bucketData[bucket].count++;
+            }
+        }
+
+        let efficiencyHtml = "";
+        if (Object.keys(bucketData).length > 0) {
+            let limit = Math.ceil(maxConcFound);
+            if(limit < 1) limit = 1;
+
+            for (let i = 0; i < limit; i++) {
+                if (bucketData[i] && bucketData[i].count > 0) {
+                    let avgLoss = bucketData[i].sum / bucketData[i].count;
+                    let color = avgLoss > 0 ? '#4f46e5' : '#ff4d4d'; 
+                    let sign = avgLoss > 0 ? '-' : '+';
+                    
+                    efficiencyHtml += `
+                        <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f1f3f5; font-size:0.85rem;">
+                            <span style="color:#555;">🧪 <b>${i}~${i+1}mg</b> 구간 <span style="font-size:0.7rem; color:#aaa;">(${bucketData[i].count}일)</span></span>
+                            <span style="font-weight:bold; color:${color};">${sign}${Math.abs(avgLoss).toFixed(2)} kg/일</span>
+                        </div>
+                    `;
+                }
+            }
+        } else {
+            efficiencyHtml = `<div style="text-align:center; padding:10px; color:#999; font-size:0.8rem;">연속된 체중 기록이 쌓이면 분석됩니다.</div>`;
+        }
+
+        // --- 5. 최종 HTML 렌더링 ---
+        summaryDiv.innerHTML = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span>📅 다이어트 경과 날짜:</span>
+                <span style="font-weight:bold;">${daysPassed}일차</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                <span>📉 총 감량 몸무게:</span>
+                <span style="font-weight:bold; color:${totalLoss >= 0 ? '#4f46e5' : '#ff4d4d'};">
+                    ${totalLoss >= 0 ? '-' : '+'}${Math.abs(totalLoss).toFixed(1)} kg
+                </span>
+            </div>
+            <div style="display:flex; justify-content:space-between;">
+                <span>⚡ 하루 평균 감량:</span>
+                <span style="font-weight:bold; color:${dailyLoss >= 0 ? '#4f46e5' : '#ff4d4d'};">
+                    ${dailyLoss >= 0 ? '-' : '+'}${Math.abs(dailyLoss).toFixed(2)} kg
+                </span>
+            </div>
+
+            <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ddd;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span>💸 지금까지 총 비용:</span>
+                    <span style="font-weight:bold; color:#333;">${Math.round(totalCostUsed).toLocaleString()}원</span>
+                </div>
+                <div style="display:flex; justify-content:space-between;">
+                    <span>💰 하루 평균 비용:</span>
+                    <span style="font-weight:bold; color:#ba2b7e;">${Math.round(costPerDay).toLocaleString()}원</span>
+                </div>
+            </div>
+            
+            <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ddd;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <span style="font-weight:bold; color:#333;">🏁 목표 몸무게:</span>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <input type="number" value="${targetWeight || ''}" placeholder="0" 
+                            style="width:60px; padding:5px; text-align:center; border:1px solid #ddd; border-radius:8px; font-weight:bold; color:#4f46e5;"
+                            onchange="saveGoal(this.value)">
+                        <span>kg</span>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <span style="font-weight:bold; color:#333;">🔮 예상 달성일:</span>
+                    ${predictionHtml}
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:bold; color:#333;">💳 예상 필요 비용:</span>
+                    ${projectedCostHtml}
+                </div>
+            </div>
+
+            <div style="margin-top:15px; background:white; border-radius:12px; padding:15px; box-shadow:0 2px 10px rgba(0,0,0,0.03);">
+                <div style="font-weight:bold; color:#4f46e5; margin-bottom:10px; text-align:center;">📊 체내 농도별 평균 감량</div>
+                ${efficiencyHtml}
+            </div>
+        `;
+    } else {
+        summaryDiv.innerHTML = `<div style="text-align:center; color:#999;">체중 기록이 없습니다.</div>`;
+    }
+  }function openInstallGuide() { document.getElementById('installModal').style.display='flex'; toggleMenu(); }
+</script>
+
+</body>
+</html>

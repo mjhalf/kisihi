@@ -989,20 +989,113 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   function calcHTotal() { let t=0, iP=Number(document.getElementById('inP').value), hP=Number(document.getElementById('hoP').value), pP=Number(document.getElementById('phP').value); if(iP>0) t=document.getElementById('inOn').checked?iP*0.9:iP; else t=(document.getElementById('hoOn').checked?hP*0.9:hP)+(document.getElementById('phOn').checked?pP*0.9:pP); document.getElementById('hTotalDisplay').innerText=Math.floor(t).toLocaleString(); return Math.floor(t); }
   async function saveH() { let date = `${document.getElementById('hYear').value}-${String(document.getElementById('hMonth').value).padStart(2,'0')}-${String(document.getElementById('hDay').value).padStart(2,'0')}`; let total = calcHTotal(); if(!selHDoseVal || total <= 0) return alert("입력 정보를 확인하세요."); hData.push({date, dose: selHDoseVal, total}); hData.sort((a,b)=>new Date(a.date)-new Date(b.date)); renderH(); if(currentUser) await saveToDB(); closeHModal(); }
   
+/* [수정 1] 목록 그리기: 수정 버튼 추가 & 삭제 버튼 연결 */
   function renderH() { 
     let b = document.getElementById('hBody'); 
     if(!b) return; 
     b.innerHTML=""; 
     let totalSum = 0;
+    
     hData.forEach((item, i) => { 
-        b.innerHTML+=`<tr><td>${item.date}</td><td>${item.dose}mg</td><td>${item.total.toLocaleString()}원</td><td><span onclick="delH(${i})">❌</span></td></tr>`; 
+        b.innerHTML += `
+            <tr>
+                <td>${item.date}</td>
+                <td>${item.dose}mg</td>
+                <td>${Number(item.total).toLocaleString()}원</td>
+                <td>
+                    <span style="cursor:pointer; margin-right:10px;" onclick="openHModal(${i})">✏️</span>
+                    <span style="cursor:pointer;" onclick="delH(${i})">❌</span>
+                </td>
+            </tr>`; 
         totalSum += Number(item.total);
     }); 
+    
     let s = document.getElementById('hSummary');
     if(s) {
         if(hData.length === 0) s.innerHTML = "아직 기록된 구입 내역이 없습니다.";
         else s.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#333;">💰 총 지출:</span><span style="font-weight:bold; font-size:1.1rem; color:#4f46e5;">${totalSum.toLocaleString()}원</span></div>`;
     }
+  }
+
+  /* [수정 2] 삭제 기능 구현 (이게 없어서 작동 안 했던 것!) */
+  async function delH(i) {
+      if(confirm("정말 이 내역을 삭제하시겠습니까?")) {
+          hData.splice(i, 1); // 배열에서 삭제
+          renderH(); // 화면 갱신
+          if(currentUser) await saveToDB(); // DB 저장
+      }
+  }
+
+  /* [수정 3] 모달 열기: 수정 시 기존 데이터 불러오기 */
+  function openHModal(i=-1) { 
+      document.getElementById('hModal').style.display='flex'; 
+      document.getElementById('editIdx').value = i; 
+      
+      // 초기화
+      document.getElementById('inP').value = '';
+      document.getElementById('hoP').value = '';
+      document.getElementById('phP').value = '';
+      document.getElementById('inOn').checked = false;
+      document.getElementById('hoOn').checked = false;
+      document.getElementById('phOn').checked = false;
+      document.getElementById('hTotalDisplay').innerText = '0';
+      document.querySelectorAll('#hDoseGroup .st-btn').forEach(btn => btn.classList.remove('active'));
+      selHDoseVal = "";
+
+      // 수정 모드일 경우 데이터 채우기
+      if (i > -1) {
+          let item = hData[i];
+          let dateParts = item.date.split('-');
+          document.getElementById('hYear').value = dateParts[0];
+          document.getElementById('hMonth').value = parseInt(dateParts[1]);
+          document.getElementById('hDay').value = parseInt(dateParts[2]);
+          
+          // 용량 버튼 활성화
+          selHDoseVal = item.dose;
+          let btns = document.querySelectorAll('#hDoseGroup .st-btn');
+          for(let btn of btns) {
+              if(btn.innerText.includes(item.dose)) btn.classList.add('active');
+          }
+
+          // 금액 채우기 (편의상 병원비 칸에 총액을 넣어둠, 사용자가 수정 가능)
+          document.getElementById('hoP').value = item.total;
+          calcHTotal();
+      } else {
+          // 새 글일 경우 오늘 날짜로 셋팅
+          const t = new Date();
+          document.getElementById('hYear').value = t.getFullYear();
+          document.getElementById('hMonth').value = t.getMonth() + 1;
+          document.getElementById('hDay').value = t.getDate();
+      }
+  }
+
+  /* [수정 4] 저장 로직: 수정 vs 신규 구분 */
+  async function saveH() { 
+      let date = `${document.getElementById('hYear').value}-${String(document.getElementById('hMonth').value).padStart(2,'0')}-${String(document.getElementById('hDay').value).padStart(2,'0')}`; 
+      let total = calcHTotal(); 
+      let idx = parseInt(document.getElementById('editIdx').value);
+
+      if(!selHDoseVal || total <= 0) return alert("용량과 금액을 확인하세요."); 
+      
+      let newData = { date, dose: selHDoseVal, total };
+
+      if (idx > -1) {
+          // 수정 모드: 기존 것 교체
+          hData[idx] = newData;
+      } else {
+          // 신규 모드: 추가
+          hData.push(newData);
+      }
+      
+      // 날짜순 정렬
+      hData.sort((a,b)=>new Date(a.date)-new Date(b.date)); 
+      
+      renderH(); 
+      if(currentUser) await saveToDB(); 
+      closeHModal(); 
+      
+      // 리포트 페이지에 있다면 차트와 비용 계산도 바로 갱신
+      if(document.getElementById('reportPage').classList.contains('active')) updateChart();
   }
 
   async function saveToDB() { 

@@ -50,10 +50,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     margin: 0 auto; 
     background: white; 
     display: flex; flex-direction: column; 
-    box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    box-shadow: none;  /* ✨ 그림자 삭제! */
     z-index: 1;
     overflow: hidden; 
-  }
+}
    
 /* 광고 영역 스타일 */
 .ad-area { 
@@ -192,6 +192,22 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 .admin-badge { background: #4f46e5; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-right: 5px; }
 .comment-box { background: #f8f9fa; padding: 10px; border-radius: 10px; margin-top: 10px; text-align: left; font-size: 0.9rem; }
 .reply-item { border-bottom: 1px solid #eee; padding: 8px 0; }
+
+/* --- [수정] 모든 요소의 스크롤바 강제 숨기기 --- */
+*::-webkit-scrollbar {
+    display: none !important; 
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+    -webkit-appearance: none !important;
+}
+
+* {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+}
+
+
 </style>
 </head>
 <body>
@@ -1021,17 +1037,33 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   }
 
   function adjustRange(v) { let r=document.getElementById('dayRange'); let val=parseInt(r.innerText)+v; if(val<7) val=7; r.innerText=val+"일"; updateChart(); }
-
-  /* 핵심 로직: 분석 리포트 업데이트 (전체 코드) */
+/* 핵심 로직: 분석 리포트 업데이트 (기간/통계 계산 로직 최종 수정) */
 function updateChart() {
   const ctx = document.getElementById('mainChart').getContext('2d');
-  const range = parseInt(document.getElementById('dayRange').innerText);
   
   // 1. 차트 데이터 준비
-  let labels = []; let wData = []; let cData = [];
-  let start = new Date(); start.setDate(start.getDate() - (range - 1));
+  let allRecordKeys = new Set([...Object.keys(weightData), ...Object.keys(injData)]);
+  let sortedKeys = Array.from(allRecordKeys).sort();
   
-  // 요일별 & 농도별 데이터 수집용 초기화
+  // 오늘 날짜 (시간 무시, 낮 12시 기준)
+  let todayRef = new Date();
+  todayRef.setHours(12, 0, 0, 0);
+
+  let start = new Date();
+  if (sortedKeys.length > 0) {
+      start = new Date(sortedKeys[0]);
+  } else {
+      start.setDate(start.getDate() - 13);
+  }
+  start.setHours(12, 0, 0, 0);
+
+  let range = Math.round((todayRef - start) / 86400000) + 1;
+  if (range < 14) range = 14; 
+
+  const rangeDisplay = document.getElementById('dayRange');
+  if(rangeDisplay) rangeDisplay.innerText = range + "일";
+
+  let labels = []; let wData = []; let cData = [];
   let bucketData = {}; 
   let maxConcFound = 0;
   let dayOfWeekData = { 0: { sum: 0, count: 0 }, 1: { sum: 0, count: 0 }, 2: { sum: 0, count: 0 }, 3: { sum: 0, count: 0 }, 4: { sum: 0, count: 0 }, 5: { sum: 0, count: 0 }, 6: { sum: 0, count: 0 } };
@@ -1044,14 +1076,14 @@ function updateChart() {
       
       let conc = 0;
       for(let s in injData) {
-          let injDate = new Date(s);
-          let diff = (d - injDate) / (1000 * 60 * 60 * 24);
-          if (diff >= 0) conc += injData[s] * Math.pow(0.5, diff/5);
+          let iDate = new Date(s); iDate.setHours(12,0,0,0);
+          let cDiff = Math.round((d - iDate)/86400000);
+          if (cDiff >= 0) conc += injData[s] * Math.pow(0.5, cDiff/5);
       }
       cData.push(conc.toFixed(2));
   }
 
-  // 2. 통계 데이터 분석 (전체 기간 루프)
+  // 2. 통계 데이터 분석
   const allDates = Object.keys(weightData).sort();
   for (let i = 0; i < allDates.length - 1; i++) {
       const d1Str = allDates[i], d2Str = allDates[i+1];
@@ -1062,18 +1094,18 @@ function updateChart() {
           
           let currentConc = 0;
           for(let s in injData) {
-              let diff = (d1 - new Date(s)) / (1000 * 60 * 60 * 24);
+              let iDate = new Date(s); iDate.setHours(12,0,0,0);
+              let tempD1 = new Date(d1); tempD1.setHours(12,0,0,0);
+              let diff = Math.round((tempD1 - iDate)/86400000);
               if(diff >= 0) currentConc += injData[s] * Math.pow(0.5, diff/5);
           }
           if(currentConc > maxConcFound) maxConcFound = currentConc;
 
-          // 농도별 버킷
           let bucket = Math.floor(currentConc); 
           if (!bucketData[bucket]) bucketData[bucket] = { sum: 0, count: 0 };
           bucketData[bucket].sum += dailyWeightChange;
           bucketData[bucket].count++;
 
-          // 요일별 데이터
           let day = d1.getDay();
           dayOfWeekData[day].sum += dailyWeightChange;
           dayOfWeekData[day].count++;
@@ -1108,8 +1140,12 @@ function updateChart() {
   const summaryDiv = document.getElementById('reportSummary');
   if (allDates.length > 0) {
       const startWeight = weightData[allDates[0]], currentWeight = weightData[allDates[allDates.length - 1]];
-      const daysPassed = Math.ceil((new Date() - new Date(allDates[0])) / 86400000) + 1;
-      const totalLoss = startWeight - currentWeight, dailyLoss = totalLoss / daysPassed;
+      
+      let sDateStats = new Date(allDates[0]); sDateStats.setHours(12,0,0,0);
+      let daysPassed = Math.round((todayRef - sDateStats) / 86400000) + 1;
+      
+      const totalLoss = startWeight - currentWeight;
+      const dailyLoss = totalLoss / daysPassed; 
 
       // 비용 계산
       let totalCostUsed = 0, costPerDay = 0, inventory = {}, lastPrices = {};
@@ -1120,8 +1156,11 @@ function updateChart() {
           for(let k=0; k<4; k++) inventory[doseKey].push(pricePerPen);
           lastPrices[doseKey] = pricePerPen;
       });
-      let todayCheck = new Date(); todayCheck.setHours(23, 59, 59, 999);
-      let sortedInjDates = Object.keys(injData).sort().filter(dStr => new Date(dStr) <= todayCheck);
+      
+      let sortedInjDates = Object.keys(injData).sort().filter(dStr => {
+          let d = new Date(dStr); d.setHours(12,0,0,0);
+          return d <= todayRef;
+      });
       sortedInjDates.forEach(date => {
           let usedDose = injData[date].toString();
           if (inventory[usedDose] && inventory[usedDose].length > 0) totalCostUsed += inventory[usedDose].shift();
@@ -1133,13 +1172,13 @@ function updateChart() {
           dietEndDate.setDate(dietEndDate.getDate() + 14);
           if (new Date() > dietEndDate) calcEndDate = dietEndDate;
       }
-      calcEndDate.setHours(0,0,0,0);
-      let sDateCost = new Date(allDates[0]); sDateCost.setHours(0,0,0,0);
-      let costDays = Math.ceil((calcEndDate - sDateCost) / 86400000) + 1;
+      calcEndDate.setHours(12,0,0,0);
+      let sDateCost = new Date(allDates[0]); sDateCost.setHours(12,0,0,0);
+      let costDays = Math.round((calcEndDate - sDateCost) / 86400000) + 1;
       if(costDays < 1) costDays = 1;
       costPerDay = totalCostUsed / costDays;
 
-      // 목표 예측 HTML
+      // 목표 예측
       let predictionHtml = `<span style="color:#999; font-size:0.8rem;">목표를 설정해주세요.</span>`;
       let projectedCostHtml = `<span style="color:#999; font-size:0.8rem;">-</span>`;
       if (targetWeight) {
@@ -1179,8 +1218,19 @@ function updateChart() {
       }
       dayEfficiencyHtml += `</div>`;
 
-      // [추가됨] 주사 회차별 상세 분석 표 생성
-      let fullInjDates = Object.keys(injData).sort();
+      // [수정완료] 주사 회차별 상세 분석 표 생성
+      // 1. 전체 주사 리스트에서 정렬
+      let sortedInjKeys = Object.keys(injData).sort();
+      
+      // 2. [핵심] "오늘" 이전인 주사만 필터링 (미래 주사 숨기기)
+      let visibleInjDates = sortedInjKeys.filter(dStr => {
+          let d = new Date(dStr); d.setHours(12,0,0,0);
+          return d <= todayRef;
+      });
+
+      let allWeightDates = Object.keys(weightData).sort();
+      let lastWeightDateStr = allWeightDates.length > 0 ? allWeightDates[allWeightDates.length-1] : null;
+
       let cycleTableHtml = `
           <div style="margin-top:10px; background:white; border-radius:12px; padding:15px; box-shadow:0 2px 10px rgba(0,0,0,0.03);">
               <div style="font-weight:bold; color:#4f46e5; margin-bottom:10px; text-align:center;">💉 주사 회차별 상세 기록</div>
@@ -1192,33 +1242,73 @@ function updateChart() {
                           <th style="padding:8px 0; color:#666; width:15%;">mg</th>
                           <th style="padding:8px 0; color:#666; width:15%;">기간</th>
                           <th style="padding:8px 0; color:#666; width:20%;">감량</th>
-                          <th style="padding:8px 0; color:#666; width:20%;">평균</th>
+                          <th style="padding:8px 0; color:#666; width:20%;">일평균</th>
                       </tr>
                   </thead>
                   <tbody>`;
       
-      for (let i = 0; i < fullInjDates.length; i++) {
-          let dateStr = fullInjDates[i];
-          let nextDateStr = (i < fullInjDates.length - 1) ? fullInjDates[i+1] : null;
+      // 필터링된(과거~오늘) 주사들만 루프
+      for (let i = 0; i < visibleInjDates.length; i++) {
+          let dateStr = visibleInjDates[i];
           let dose = injData[dateStr];
           
-          let sDate = new Date(dateStr);
-          let eDate = nextDateStr ? new Date(nextDateStr) : new Date(); 
-          sDate.setHours(0,0,0,0); eDate.setHours(0,0,0,0);
+          // 다음 주사 날짜 확인 (전체 리스트에서 확인해야 함)
+          let currentIdxInFull = sortedInjKeys.indexOf(dateStr);
+          let nextDateStr = (currentIdxInFull < sortedInjKeys.length - 1) ? sortedInjKeys[currentIdxInFull+1] : null;
           
-          let duration = Math.ceil((eDate - sDate) / (1000 * 60 * 60 * 24));
-          if (i === fullInjDates.length - 1 && duration < 1) duration = 1;
+          let sDate = new Date(dateStr); sDate.setHours(12,0,0,0);
+          
+          // [핵심] 종료 날짜(eDate) 결정
+          let eDate;
+          let isFutureNext = false;
 
-          let startW = weightData[dateStr];
-          let sortedW = Object.keys(weightData).sort();
-          let endW = nextDateStr ? weightData[nextDateStr] : weightData[sortedW[sortedW.length-1]]; 
+          if (nextDateStr) {
+              let nextD = new Date(nextDateStr); nextD.setHours(12,0,0,0);
+              // 다음 주사가 오늘보다 미래라면? -> 아직 안 온 날짜이므로 '오늘'을 종료일로 잡아야 함 (기간 오류 수정)
+              if (nextD > todayRef) {
+                  isFutureNext = true;
+                  eDate = new Date(); // 오늘
+              } else {
+                  eDate = nextD; // 이미 지난 주사면 그 날짜까지
+              }
+          } else {
+              // 다음 주사 계획 자체가 없으면 오늘까지
+              eDate = new Date();
+          }
           
+          // 만약 오늘 날짜보다 마지막 체중 기록일이 더 최신이면(미래 체중??) 고려하되 보통은 오늘
+          if (lastWeightDateStr && new Date(lastWeightDateStr) > eDate) {
+             // 체중 기록이 더 뒤에 있으면 그 날짜까지로 확장 가능하지만, 
+             // "현재 진행중"인 경우 오늘까지로 보는게 맞음. (유지)
+          }
+          eDate.setHours(12,0,0,0);
+
+          // 기간 계산
+          let duration = Math.round((eDate - sDate) / 86400000);
+          if (duration < 1) duration = 1; 
+
+          // 몸무게 변화 계산
+          let startW = weightData[dateStr];
+          let endW;
+          
+          // 끝나는 시점의 몸무게 찾기
+          // 다음 주사가 있고 + 그게 이미 지났으면 -> 다음 주사 맞은 날 몸무게
+          if (nextDateStr && !isFutureNext) {
+              endW = weightData[nextDateStr];
+          } else {
+              // 다음 주사가 없거나(마지막), 미래에 예정되어 있다면(진행중) -> 가장 최근 몸무게 사용
+              endW = lastWeightDateStr ? weightData[lastWeightDateStr] : null;
+          }
+
           let lossText = "-", effText = "-";
+          
           if (startW && endW) {
               let loss = startW - endW;
-              let eff = loss / duration;
+              let eff = duration > 0 ? loss / duration : 0;
               let color = loss >= 0 ? '#4f46e5' : '#ff4d4d';
               let sign = loss >= 0 ? '-' : '+';
+              if(Math.abs(loss) < 0.01) { color = '#999'; sign = ''; }
+
               lossText = `<span style="color:${color}; font-weight:bold;">${sign}${Math.abs(loss).toFixed(1)}</span>`;
               effText = `<span style="color:#666;">${sign}${Math.abs(eff).toFixed(2)}</span>`;
           }
@@ -1235,41 +1325,45 @@ function updateChart() {
       }
       cycleTableHtml += `</tbody></table></div>`;
 
-      // 최종 출력 (순서: 요약 -> 요일별 -> 농도별 -> 비용/목표 -> 주사기록표)
+      // 최종 출력
       summaryDiv.innerHTML = `
-          <div style="padding:15px; background:white; border-radius:12px; margin-bottom:10px;">
-              <div style="display:flex; justify-content:space-between;"><span>경과 날짜</span><b>${daysPassed}일</b></div>
-              <div style="display:flex; justify-content:space-between;"><span>총 감량</span><b style="color:#4f46e5;">-${totalLoss.toFixed(1)}kg</b></div>
+          <div style="padding:20px; background:white; border-radius:15px; margin-bottom:10px; box-shadow:0 2px 10px rgba(0,0,0,0.03);">
+              <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>📅 경과 날짜:</span><span style="font-weight:bold;">${daysPassed}일차</span></div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>📉 총 감량:</span><span style="font-weight:bold; color:${totalLoss >= 0 ? '#4f46e5' : '#ff4d4d'};">${totalLoss >= 0 ? '-' : '+'}${Math.abs(totalLoss).toFixed(1)} kg</span></div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:15px;"><span>⚡ 일 평균 감량:</span><span style="font-weight:bold; color:${dailyLoss >= 0 ? '#4f46e5' : '#ff4d4d'};">${dailyLoss >= 0 ? '-' : '+'}${Math.abs(dailyLoss).toFixed(2)} kg</span></div>
+
+              <div style="border-top:1px dashed #eee; padding-top:15px; margin-bottom:15px;">
+                  <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>💸 총 비용:</span><span style="font-weight:bold; color:#333;">${Math.round(totalCostUsed).toLocaleString()}원</span></div>
+                  <div style="display:flex; justify-content:space-between;"><span>💰 일 비용:</span><span style="font-weight:bold; color:#ba2b7e;">${Math.round(costPerDay).toLocaleString()}원</span></div>
+              </div>
+
+              <div style="border-top:1px dashed #eee; padding-top:15px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                      <span style="font-weight:bold; color:#333;">🏁 목표:</span>
+                      <input type="number" value="${targetWeight || ''}" placeholder="0" style="width:70px; padding:5px; text-align:center; border:1px solid #ddd; border-radius:8px; font-weight:bold; color:#4f46e5;" onchange="saveGoal(this.value)"> kg
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;"><span style="font-weight:bold; color:#333;">🔮 예상일:</span>${predictionHtml}</div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#333;">💳 예상비용:</span>${projectedCostHtml}</div>
+              </div>
           </div>
+
           <div style="padding:15px; background:white; border-radius:12px; margin-bottom:10px;">
               <div style="font-weight:bold; color:#ba2b7e; margin-bottom:10px; text-align:center;">📅 요일별 평균 감량 (kg)</div>
               ${dayEfficiencyHtml}
           </div>
+          
           <div style="padding:15px; background:white; border-radius:12px; margin-bottom:10px;">
               <div style="font-weight:bold; color:#4f46e5; margin-bottom:10px; text-align:center;">📊 체내 농도별 평균 감량</div>
               ${efficiencyHtml || '<div style="text-align:center; color:#999; font-size:0.8rem;">데이터 분석 중...</div>'}
           </div>
-          <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ddd;">
-              <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span>💸 총 비용:</span><span style="font-weight:bold; color:#333;">${Math.round(totalCostUsed).toLocaleString()}원</span></div>
-              <div style="display:flex; justify-content:space-between;"><span>💰 일 비용:</span><span style="font-weight:bold; color:#ba2b7e;">${Math.round(costPerDay).toLocaleString()}원</span></div>
-          </div>
-          <div style="margin-top:15px; padding-top:15px; border-top:1px dashed #ddd;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                  <span style="font-weight:bold; color:#333;">🏁 목표:</span>
-                  <input type="number" value="${targetWeight || ''}" placeholder="0" style="width:60px; padding:5px; text-align:center; border:1px solid #ddd; border-radius:8px; font-weight:bold; color:#4f46e5;" onchange="saveGoal(this.value)"> kg
-              </div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;"><span style="font-weight:bold; color:#333;">🔮 예상일:</span>${predictionHtml}</div>
-              <div style="display:flex; justify-content:space-between; align-items:center;"><span style="font-weight:bold; color:#333;">💳 예상비용:</span>${projectedCostHtml}</div>
-          </div>
+
           ${cycleTableHtml}
       `;
   } else {
       summaryDiv.innerHTML = `<div style="text-align:center; color:#999;">체중 기록이 없습니다.</div>`;
   }
 }
-
-
-  function openInstallGuide() { document.getElementById('installModal').style.display='flex'; toggleMenu(); }
+function openInstallGuide() { document.getElementById('installModal').style.display='flex'; toggleMenu(); }
 </script>
 </body>
 </html>
